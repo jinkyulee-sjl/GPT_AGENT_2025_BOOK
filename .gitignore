@@ -1,6 +1,42 @@
+# Environment files
 .env
+
+# Media files
 *.mp4
 *.srt
+
+# FFmpeg directories
 ffmpeg-2025-11-17-git-e94439e49b-full_build/
 ffmpeg-7.1.1-full_build/
 ffmpeg-7.1.1-full_build-shared/
+
+# Python virtual environment
+venv/
+env/
+ENV/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv_trash/

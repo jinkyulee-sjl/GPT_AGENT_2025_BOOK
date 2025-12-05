@@ -1,7 +1,12 @@
 import os, traceback
+
+# Fix for PyTorch 2.6+ weights_only=True default causing WeightsUnpickler errors
+# Must be set BEFORE importing torch
+os.environ['TORCH_FORCE_WEIGHTS_ONLY_LOAD'] = '0'
+
 import torch
 import pandas as pd
-import soundfile as sf
+# import soundfile as sf # 버전 충돌문제 해결했으므로 이제 필요 없음
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 from pyannote.audio import Pipeline
 from dotenv import load_dotenv
@@ -98,6 +103,11 @@ def whisper_to_dataframe(result, output_file_path):
 # Since torchcodec is incompatible with the current PyTorch version, we use
 # soundfile to load audio and pass the waveform directly to the pipeline.
 
+# Pytorch 와 torchcodec/torchaudio가 버전 충돌하는 문제를 해결했으므로
+# 아래의 load_audio() 함수는 필요 없다.
+# Pytoch Version 2.3.1 - cu121 로 다운그레이드 했음
+# Python Version 3.12.6 로 다운그레이드 했음
+
 def load_audio(file_path):
     """
     Load audio file using soundfile and convert to PyTorch tensor.
@@ -137,10 +147,10 @@ def speaker_diarization(audio_file_path: str, output_rttm_file_path: str,output_
     try:
         if token:
             print("HF token found in environment (value not shown).")
-            pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", token=token)
+            diarization_pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", use_auth_token=token)
         else:
             print("No HF_TOKEN in environment. If the model is gated, you must set HF_TOKEN with a token that has Read permission.")
-            pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
+            diarization_pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
 
         print("Pipeline loaded successfully.")
     except Exception as e:
@@ -154,25 +164,30 @@ def speaker_diarization(audio_file_path: str, output_rttm_file_path: str,output_
     try:
         if torch.cuda.is_available():
             try:
-                pipeline.to(torch.device("cuda:0"))
-                print("CUDA available — pipeline moved to GPU.")
+                diarization_pipeline.to(torch.device("cuda:0"))
+                print("CUDA available — diarization pipeline moved to GPU.")
             except Exception as e:
-                print("Could not move pipeline to GPU (possibly OOM). Continuing on CPU.")
+                print("Could not move diarization pipeline to GPU (possibly OOM). Continuing on CPU.")
                 traceback.print_exc()
         else:
             print("CUDA is not available — using CPU.")
     except NameError:
-        # pipeline variable might not exist if instantiation failed
-        print("Pipeline not available to move to GPU. Skipping GPU move.")
+        # diarization_pipeline variable might not exist if instantiation failed
+        print("Diarization pipeline not available to move to GPU. Skipping GPU move.")
 
 
-    io = load_audio(audio_file_path)
+    # Pytorch 와 torchcodec/torchaudio가 버전 충돌하는 문제를 해결했으므로
+    # 아래의 코드는 필요 없다.
+    # Pytoch Version 2.3.1 - cu121 로 다운그레이드 했음
+    # Python Version 3.12.6 로 다운그레이드 했음
+
+    # io = load_audio(audio_file_path) # 이제 필요 없음
 
     # Run the pipeline
     try:
-        # diarization_pipeline = pipeline(audio_file_path)
-        diarization_pipeline = pipeline(io)
-        print("Pipeline executed successfully.")
+        diarization_result = diarization_pipeline(audio_file_path)
+        # diarization_result = diarization_pipeline(io) # 이제 필요 없음
+        print("Diarization pipeline executed successfully.")
     except Exception as e:
         print("Failed to execute pipeline()")
         traceback.print_exc()
@@ -180,7 +195,8 @@ def speaker_diarization(audio_file_path: str, output_rttm_file_path: str,output_
 
     # dump the diarization output to disk using  RTTM format
     with open(output_rttm_file_path, "w", encoding="utf-8") as rttm:
-        diarization_pipeline.speaker_diarization.write_rttm(rttm)
+        # diarization_result.speaker_diarization.write_rttm(rttm) # 이제 필요 없음   
+        diarization_result.write_rttm(rttm)
 
     # 판다스 데이터프레임으로 변환
     df_rttm = pd.read_csv(output_rttm_file_path, # rttm 파일 경로
